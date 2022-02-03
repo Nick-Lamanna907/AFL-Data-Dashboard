@@ -9,9 +9,12 @@ df_games = pd.read_csv('/Users/nllama/Documents/games.csv')
 # Reorder based on date
 df_games["date"] = pd.to_datetime(df_games["date"])
 df_games = df_games.sort_values(by="date")
-# Create list of unique teams
+# Create list of unique teams and column headings
 df_teamList = pd.DataFrame({
-    'c' : df_games['homeTeam'].unique()
+    'teams' : df_games['homeTeam'].unique(),
+})
+df_colNames = pd.DataFrame({
+    'cols' : df_games.columns
 })
 
 app.layout = html.Div([
@@ -19,11 +22,21 @@ app.layout = html.Div([
     html.H1('Using the Slider', style={'textAlign':'center'}),
     
     html.Div([ 
-        dcc.Dropdown( # Drop down menu
+        "Choose a home side: ", dcc.Dropdown( # Drop down menu for home team
             id='dropdown-home-team', 
             value='Richmond', 
-            options=[{'label':i, 'value':i} for i in df_teamList['c'].unique()])
-        ], style={'marginBottom': 25, 'marginTop': 25, 'width': '40%'}),
+            options=[{'label':i, 'value':i} for i in df_teamList['teams'].unique()]),
+        
+        "Choose x axis: ", dcc.Dropdown( # Drop down menu for x column
+            id='dropdown-x-axis', 
+            value='date', 
+            options=[{'label':i, 'value':i} for i in df_colNames['cols'].unique()]),
+        
+        "Choose y axis: ", dcc.Dropdown( # Drop down menu for y column
+            id='dropdown-y-axis', 
+            value='homeTeamScore', 
+            options=[{'label':i, 'value':i} for i in df_colNames['cols'].unique()])
+        ], style={'marginBottom': 25, 'marginTop': 25, 'width': '30%'}),
     
     html.Div([    
         dcc.DatePickerRange( # Date range picker
@@ -59,16 +72,16 @@ def store_data(value):
     Output('test-graph', 'children'), # Graph
     Input('store-data', 'data'), # Data storage
     Input('date-picker-range', 'start_date'), # Start date
-    Input('date-picker-range', 'end_date') # End date
+    Input('date-picker-range', 'end_date'), # End date
+    Input('dropdown-x-axis', 'value'), # x-axis choice
+    Input('dropdown-y-axis', 'value') # y-axis choice
 )
-def createGraph(data, start_date, end_date):
+def createGraph(data, start_date, end_date, x_axis, y_axis):
     home_df = pd.DataFrame(data)                                                # Get the stored dataframe (for the home team)
     home_df = home_df[                                                          # Filter the date range
         (home_df['date'] > start_date) & 
-        (home_df['date'] < end_date)]
-    score = home_df['homeTeamScore']
-    dates = home_df['date']        
-    fig1 = px.scatter(x=dates, y=score)
+        (home_df['date'] < end_date)]   
+    fig1 = px.scatter(home_df, x=x_axis, y=y_axis)
     return dcc.Graph(figure=fig1)
 
 
