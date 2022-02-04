@@ -8,6 +8,9 @@ app = Dash(__name__,
 
 # Read datafiles and produce data frames
 df_games = pd.read_csv('/Users/nllama/Documents/games.csv')
+# Add in columns that will be filled later
+df_games["team"] = "Hawthorn"
+df_games["teamScore"] = 123
 # Reorder based on date
 df_games["date"] = pd.to_datetime(df_games["date"])
 df_games = df_games.sort_values(by="date")
@@ -88,7 +91,14 @@ app.layout = html.Div([
     Input('dropdown-home-team', 'value') # Dropdown
 )
 def store_data(value):
-    dataset = df_games.loc[df_games['homeTeam'] == value]                       # Store the dataset for the home team selected
+    dataset = df_games.loc[(df_games['homeTeam'] == value) | (df_games['awayTeam'] == value)] # Store the dataset for the team selected
+    dataset["team"] = value
+    # Set score if home
+    mask = dataset['homeTeam']==value
+    dataset.loc[mask, 'teamScore'] = dataset.loc[mask, 'homeTeamScore']
+    # Set score if away
+    mask = dataset['homeTeam']!=value
+    dataset.loc[mask, 'teamScore'] = dataset.loc[mask, 'awayTeamScore']
     return dataset.to_dict()
 
 
@@ -102,11 +112,12 @@ def store_data(value):
     Input('dropdown-y-axis', 'value') # y-axis choice
 )
 def createGraph(data, start_date, end_date, x_axis, y_axis):
-    home_df = pd.DataFrame(data)                                                # Get the stored dataframe (for the home team)
-    home_df = home_df[                                                          # Filter the date range
-        (home_df['date'] > start_date) & 
-        (home_df['date'] < end_date)]   
-    fig1 = px.scatter(home_df, x=x_axis, y=y_axis)
+    df = pd.DataFrame(data)                                                # Get the stored dataframe (for the home team)
+    df = df[                                                          # Filter the date range
+        (df['date'] > start_date) & 
+        (df['date'] < end_date)]  
+    df = df.sort_values(by=x_axis)
+    fig1 = px.scatter(df, x=x_axis, y=y_axis)
     return dcc.Graph(figure=fig1)
 
 
