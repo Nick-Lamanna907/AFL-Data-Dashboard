@@ -4,6 +4,8 @@ Learning how to use Plotly Dash.
 This project is helping me how to create a data dashboard.
 My goal is to have a nice looking dahsboard that will let me:
   - choose a home team
-  - filter their data by date
-  - choose an x and y column to compare
+  - view their home and away scores for a user selected data range
+  - show a pie chart of W, D and L
+  - show a list of players
+  - when the user choses a player, show their stats in a "stat window"
   
