@@ -20,6 +20,7 @@ app = Dash(__name__,
 # Create df of game data
 df_games = pd.read_csv('/Users/nllama/Documents/games.csv')
 df_stats = pd.read_csv('/Users/nllama/Documents/stats.csv')
+df_colours = pd.read_csv('/Users/nllama/Documents/clubcolours.csv')
 
 # Create df of unique teams 
 df_teamList = pd.DataFrame({
@@ -46,60 +47,69 @@ class Player:
 #### Components Code ####
 
 app.layout = html.Div([
-    dbc.Row( # Heading row
-        dbc.Col(
-            html.H1( # Heading
-                'AFL Data Dashboard V2', 
-                style={'textAlign':'center'}), 
-        )
-    ),
+    html.Div([
+        dbc.Row( # Heading row
+            dbc.Col(
+                html.H1( # Heading
+                    'AFL Data Dashboard V2', 
+                    style={'textAlign':'center'}), 
+            )
+        ),
+    ]),
     
-    dbc.Row( # Team choice row
-        dbc.Col(
-            html.Div([ # Drop down menu for team selection
-                "Choose a team: ", dcc.Dropdown( 
-                id='dropdown-team', 
-                value='Richmond', 
-                options=[{'label':i, 'value':i} for i in df_teamList['teams'].unique()])
-            ]), 
-        width={'size':3, 'offset':2})
-    ),
+    html.Div([
+        dbc.Row( # Team choice row
+            dbc.Col(
+                html.Div([ # Drop down menu for team selection
+                    "Choose a team: ", dcc.Dropdown( 
+                    id='dropdown-team', 
+                    value='Richmond', 
+                    options=[{'label':i, 'value':i} for i in df_teamList['teams'].unique()])
+                ]), 
+                style={'text-align':'center'},  width={'size':4, 'offset':4})
+        ),
+    ],style={'margin':'20px'}),
     
-    dbc.Row( # Home and away scatter plot row
-        dbc.Col(
-                html.Div( # Graph
-                    id='graph-scatter-score', 
-                    children=[]), 
-        width={'size':10, 'offset':1})
-    ),
+    html.Div([
+        dbc.Row( # Home and away scatter plot row
+            dbc.Col(
+                    html.Div( # Graph
+                        id='graph-scatter-score', 
+                        children=[]), 
+            width={'size':10, 'offset':1}),
+            style={'border':'50px'}
+        ),
+    ],style={'margin':'20px'}),
     
-    dbc.Row([ # W, D, L pie chart row
-        dbc.Col(
-                html.Div(
-                    id='graph-pie-WLD', 
-                    children=[]), 
-        width={'size':4, 'offset':1}),
-       
-        dbc.Col([
-            html.Div([ # Drop down menu for player selection
-                "Choose a player: ", dcc.Dropdown( 
-                id='dropdown-player',  
-                options=[{'label':i, 'value':i} for i in df_playerList['players'].unique()])
-            ]), 
-            html.Div( # Player stat card
-                html.P(
-                    id='test-output',
-                    children='Player stats will appear here\nChoose one to start ^^^'
-                )
-            )],
-        width={'size':3, 'offset':2})
-        
+    html.Div([
+        dbc.Row([ # W, D, L pie chart row
+            dbc.Col(
+                    html.Div(
+                        id='graph-pie-WLD', 
+                        children=[]), 
+            width={'size':4, 'offset':1}),
+           
+            dbc.Col([
+                html.Div([ # Drop down menu for player selection
+                    "Choose a player: ", dcc.Dropdown( 
+                    id='dropdown-player',  
+                    options=[{'label':i, 'value':i} for i in df_playerList['players'].unique()])
+                ]), 
+                html.Div( # Player stat card
+                    html.P(
+                        id='test-output',
+                        children='Player stats will appear here\nChoose one to start ^^^'
+                    )
+                )],
+            width={'size':3, 'offset':2})
+        ]),
     ]),
     
     # dcc.Store inside the user's current browser session
     dcc.Store(id='store-team-data', data=[], storage_type='memory'), # 'local' or 'session'
+    dcc.Store(id='store-team-colour', data=[], storage_type='memory'), # 'local' or 'session'
     dcc.Store(id='store-stat-data', data=[], storage_type='memory'), # 'local' or 'session'
-])
+], style={'fontSize': 20})
 
 #### Callback Code ####
 
@@ -114,6 +124,16 @@ def storeGameData(value):
     dataset = dataset.sort_values(by='date') # Reorder based on date
     return dataset.to_dict()
 
+
+# Store dataframe of team colours (df_colours)  
+@callback(
+    Output('store-team-colour', 'data'), # Data storage
+    Input('dropdown-team', 'value') # Team choice
+)
+def storeTeamColours(value):
+    return df_colours.to_dict()
+
+
 # Store dataframe of all stat data (df_stats) for chosen team when dropdown-team is modified 
 @callback(
     Output('store-stat-data', 'data'), # Data storage
@@ -122,6 +142,7 @@ def storeGameData(value):
 def storeStatData(value):
     dataset = df_stats.loc[(df_stats['team'] == value)] # Get all rows with chosen team in theme
     return dataset.to_dict()
+
 
 # Update player list drop down (remember: stored dataset is for chosen team)
 @callback(
@@ -133,6 +154,7 @@ def updatePlayerList(data, value):
     df = pd.DataFrame(data) # Get the stored dataframe
     players = df.loc[(df['team']==value)]['displayName'].unique()
     return [{'label':i, 'value':i} for i in players]
+
 
 # Update player stat card (remember: stored dataset is for chosen team)
 @callback(
@@ -162,6 +184,7 @@ def updatePlayerCard(value, data):
     
     return msg
 
+
 # Create scatter from stored dataset (remember: stored dataset is for chosen team)
 @callback(
     Output('graph-scatter-score', 'children'), # Scatter
@@ -180,14 +203,17 @@ def createHAScoreScatter(data, value):
     fig.layout.title.text = value + ' Home and Away Scores' # How to centre??? 
     return dcc.Graph(figure=fig)
 
+
 # Create Pie from stored dataset (remember: stored dataset is for chosen team)
 @callback(
     Output('graph-pie-WLD', 'children'), # Pie
     Input('store-team-data', 'data'), # Data storage
+    Input('store-team-colour', 'data'), # Data storage
     Input('dropdown-team', 'value') # Team choice
 )
-def createWDLPie(data, value):
-    df = pd.DataFrame(data) # Get the stored dataframe (for the home team)
+def createWDLPie(dataTeam, dataColour, value):
+    df = pd.DataFrame(dataTeam) # Get the stored dataframe (for the home team)
+    df_colour = pd.DataFrame(dataColour)
     
     # Get home data
     df_home = df.loc[(df['homeTeam']==value)]
@@ -223,13 +249,20 @@ def createWDLPie(data, value):
             sort = False,)
     fig.add_trace(pie)
     
-    colors = ['mediumturquoise', 'darkorange', 'lightgreen']
+    # Get first team colours to display 
+    colors = [
+        df_colour.loc[(df_colour['team'] == value),'colour1'].iloc[0],  
+        df_colour.loc[(df_colour['team'] == value),'colour2'].iloc[0],
+        df_colour.loc[(df_colour['team'] == value),'colour3'].iloc[0],
+    ]
+    
     fig.update_traces(
             hoverinfo = 'label', 
             textinfo = 'percent', 
             textfont_size = 16,
             marker = dict(colors=colors, line=dict(color='#000000', width=2)))
     fig.layout.title.text = value + ' W/D/L Record'
+    fig.update_layout(plot_bgcolor='rgba(0, 0, 0, 0)',paper_bgcolor='rgba(0, 0, 0, 0)')
     return dcc.Graph(figure=fig)
 
 if __name__ == '__main__':
