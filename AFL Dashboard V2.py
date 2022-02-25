@@ -33,6 +33,16 @@ df_playerList = pd.DataFrame({
     'players' : players,
 })
 
+# Player class for creating player card
+class Player:
+    def __init__(self):
+        self.name = None
+        self.games = None
+        self.GPG = None
+        self.BPG = None
+        self.PPG = None
+        self.DPG = None
+
 #### Components Code ####
 
 app.layout = html.Div([
@@ -70,12 +80,18 @@ app.layout = html.Div([
                     children=[]), 
         width={'size':4, 'offset':1}),
        
-        dbc.Col(
+        dbc.Col([
             html.Div([ # Drop down menu for player selection
                 "Choose a player: ", dcc.Dropdown( 
                 id='dropdown-player',  
                 options=[{'label':i, 'value':i} for i in df_playerList['players'].unique()])
             ]), 
+            html.Div( # Player stat card
+                html.P(
+                    id='test-output',
+                    children='Player stats will appear here\nChoose one to start ^^^'
+                )
+            )],
         width={'size':3, 'offset':2})
         
     ]),
@@ -117,6 +133,34 @@ def updatePlayerList(data, value):
     df = pd.DataFrame(data) # Get the stored dataframe
     players = df.loc[(df['team']==value)]['displayName'].unique()
     return [{'label':i, 'value':i} for i in players]
+
+# Update player stat card (remember: stored dataset is for chosen team)
+@callback(
+    Output('test-output', 'children'), # Test ouput label
+    Input('dropdown-player', 'value'), # Playes list drop down
+    Input('store-stat-data', 'data'), # Data storage
+)
+def updatePlayerCard(value, data):
+    df = pd.DataFrame(data) # Get the stored dataframe
+    df_player = df.loc[(df['displayName'] == value)]
+    
+    player = Player()
+    player.name = value
+    player.games = df_player['gameNumber'].max()
+    player.GPG = round(df_player['Goals'].sum()/player.games,2)
+    player.BPG = round(df_player['Behinds'].sum()/player.games,2)
+    player.PPG = round((player.GPG*6) + player.BPG,2)
+    player.DPG = round(df_player['Disposals'].sum()/player.games,2)
+    
+    msg = [html.Br(),
+           'Player name:  ', player.name, html.Br(),
+           'Games played: ', player.games, html.Br(),
+           'Goals/game:   ', player.GPG, html.Br(),
+           'Behinds/game: ', player.BPG, html.Br(),
+           'Score/game:   ', player.PPG, html.Br(),
+           'Disp./game:   ', player.DPG, html.Br()]
+    
+    return msg
 
 # Create scatter from stored dataset (remember: stored dataset is for chosen team)
 @callback(
