@@ -1,9 +1,3 @@
-"""
-Created on Thu Feb 17 11:11:20 2022
-
-@author: nllama
-"""
-
 from dash import Dash, html, dcc, Output, Input, callback, dash_table
 import dash_bootstrap_components as dbc
 import pandas as pd
@@ -109,7 +103,7 @@ app.layout = html.Div([
     dcc.Store(id='store-team-data', data=[], storage_type='memory'), # 'local' or 'session'
     dcc.Store(id='store-team-colour', data=[], storage_type='memory'), # 'local' or 'session'
     dcc.Store(id='store-stat-data', data=[], storage_type='memory'), # 'local' or 'session'
-], style={'fontSize': 20})
+], style={'fontSize': 20, 'background-color':'#DBAE86'})
 
 #### Callback Code ####
 
@@ -174,13 +168,16 @@ def updatePlayerCard(value, data):
     player.PPG = round((player.GPG*6) + player.BPG,2)
     player.DPG = round(df_player['Disposals'].sum()/player.games,2)
     
-    msg = [html.Br(),
-           'Player name:  ', player.name, html.Br(),
-           'Games played: ', player.games, html.Br(),
-           'Goals/game:   ', player.GPG, html.Br(),
-           'Behinds/game: ', player.BPG, html.Br(),
-           'Score/game:   ', player.PPG, html.Br(),
-           'Disp./game:   ', player.DPG, html.Br()]
+    if player.games > 0:
+        msg = [html.Br(),
+            'Player name:  ', player.name, html.Br(),
+            'Games played: ', player.games, html.Br(),
+            'Goals/game:   ', player.GPG, html.Br(),
+            'Behinds/game: ', player.BPG, html.Br(),
+            'Score/game:   ', player.PPG, html.Br(),
+            'Disp./game:   ', player.DPG, html.Br()]
+    else:
+        msg = [html.Br(), 'Player stats will appear here', html.Br(), 'Choose one to start ^^^']
     
     return msg
 
@@ -189,12 +186,36 @@ def updatePlayerCard(value, data):
 @callback(
     Output('graph-scatter-score', 'children'), # Scatter
     Input('store-team-data', 'data'), # Data storage
+    Input('store-team-colour', 'data'), # Data storage
     Input('dropdown-team', 'value') # Team choice
 )
-def createHAScoreScatter(data, value):
-    df = pd.DataFrame(data) # Get the stored dataframe (for the home team)
-    homeGO = go.Scatter(x=df.loc[(df['homeTeam'] == value)]['date'], y=df.loc[(df['homeTeam'] == value)]['homeTeamScore'], name='home', mode='markers') # Home graph object
-    awayGO = go.Scatter(x=df.loc[(df['awayTeam'] == value)]['date'], y=df.loc[(df['awayTeam'] == value)]['awayTeamScore'], name='away', mode='markers') # Away graph object
+def createHAScoreScatter(dataTeam, dataColour, value):
+    df = pd.DataFrame(dataTeam) # Get the stored dataframe (for the home team)
+    df_colour = pd.DataFrame(dataColour)
+
+    # Get team colours to display 
+    colors = [
+        df_colour.loc[(df_colour['team'] == value),'colour1'].iloc[0],  
+        df_colour.loc[(df_colour['team'] == value),'colour2'].iloc[0],
+        df_colour.loc[(df_colour['team'] == value),'colour3'].iloc[0],
+    ]
+
+    homeGO = go.Scatter( # Home graph object
+        x=df.loc[(df['homeTeam'] == value)]['date'], 
+        y=df.loc[(df['homeTeam'] == value)]['homeTeamScore'], 
+        name='home', 
+        mode='markers',
+        textfont_size = 16,
+        marker = dict(color=colors[0]))
+
+    awayGO = go.Scatter(# Away graph object
+        x=df.loc[(df['awayTeam'] == value)]['date'], 
+        y=df.loc[(df['awayTeam'] == value)]['awayTeamScore'], 
+        name='away', 
+        mode='markers',
+        textfont_size = 16,
+        marker = dict(color=colors[1]))
+
     fig = make_subplots() # Useful for editing plot https://plotly.com/python/figure-structure/
     fig.add_trace(homeGO)
     fig.add_trace(awayGO)
@@ -249,7 +270,7 @@ def createWDLPie(dataTeam, dataColour, value):
             sort = False,)
     fig.add_trace(pie)
     
-    # Get first team colours to display 
+    # Get team colours to display 
     colors = [
         df_colour.loc[(df_colour['team'] == value),'colour1'].iloc[0],  
         df_colour.loc[(df_colour['team'] == value),'colour2'].iloc[0],
